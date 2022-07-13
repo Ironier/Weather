@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <title>DEMO</title>
+  <script src="/static/echarts.js"></script>
+  <script src="/static/echarts-gl.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="/static/sakura.js"></script>
+  <script src="/static/world.js"></script>
+</head>
+
+<body style="background-color:rgba(85,85,85,0.2);">
+  <!--EChartsDOM -->
+  <center>
+    <form id="form" name="form" method='POST' action='/query/' style="background-color:rgba(85,85,85,0.95);">
+      <h1 style="color:rgba(227,215,202,0.78);font-family: 'JetBrains Mono Light';display:inline;">
+        <div style="color:rgb(252,238,186);font-family: 'Adobe 宋体 Std L';font-size: 64px;display:inline;">湖北天气预报</div>
+         请输入查询内容:
+        <input id='input_text' type="text" name="name" style="background-color:rgba(41,52,65,1);height:30px;width:400px;color:white;font-size:25px;border-radius:6px;">
+        <input type="submit" value="点击查询" style="font-family: 'Adobe 宋体 Std L';height:40px;width:130px;font-size:22px;border-radius:6px;">
+      </h1>
+    </form>
+    <div id="main" style="width:100%;height:885px;background-color:rgba(85,85,85,0.93);">
+    </div>
+    <!-- ECharts-->
+    <script type="text/javascript">
+      var input_ele = document.getElementById('input_text');
+      var form_ele = document.getElementById('form');
+      //DOMECharts
+      var g_colors = ["#0274B1","#5FD587","#A96409","#E4A1A5",
+        "#C2B3EF","#943C40","#246B0F","#EC5D1F",
+        "#C02AF6","#6C1554","#E12566","#523491",
+              "#FF9111","#70717c","#87ee24","#0bd0c3",
+              "#3284D6","rgba(72,37,12,0.8)","#c4a93b"];
+      var request = {{dict_return|tojson}};
+      var cur_request = {{cur_city_data|tojson}};
+      var g_cur_city = {{cur_city}};
+      var air_levels = new Array(request.locs.length);
+      var air_level_array = new Array(request.locs.length);
+      var revNameMap={'十堰':'十堰市', '襄阳':'襄阳市', '神农架':'神农架林区', '随州':'随州市', '恩施':'恩施土家族苗族自治州', '宜昌':'宜昌市', '荆门':'荆门市', '荆州':'荆州市', '潜江':'潜江市', '天门':'天门市', '仙桃':'仙桃市', '孝感':'孝感市', '武汉':'武汉市', '黄冈':'黄冈市', '鄂州':'鄂州市', '咸宁':'咸宁市', '黄石':'黄石市'}
+      for(var i = 0; i<request.locs.length; ++i){
+        air_levels[i] = {name:request.locs[i],value:request.data[i].air_level};
+        air_level_array[i] = request.data[i].air_level;
+      }
+      var g_timer = 0;
+      var cnt = 0;
+      fetch('/static/hubei.json').then(rs => {return rs.json();}).then(rs =>{
+      var prov = rs;
+      echarts.registerMap('hubei',prov);
+      var mapData = prov.features.map(function(item){
+        return {
+          name: item.properties.name,
+          value: item.properties.center,
+        }
+      });
+      var convertData = function (areaValue) {
+        var res = [];
+        for (var i = 0; i < areaValue.length; i++) {
+          // var geoCoord = geoCoordMap[data[i].name];
+          mapData.forEach((v) => {
+            if(v.name == revNameMap[areaValue[i].name]){
+              res.push({
+                name: areaValue[i].name,
+                value: v.value.concat(areaValue[i].value,i)
+              });
+            }
+          });
+        }
+        console.log(res);
+        return res;
+      };
+      var myChart = echarts.init(document.getElementById('main'));
+      var option = { //'rgba(41,52,65,1)'
+        title:[{
+          text:'{drop|}相对湿度\t\t\t\t\t\t{wind|}风向\n\n\t\t\t\t\t\t{num|'+cur_request.wet+'}\t\t\t\t\t\t\t\t{dir2|'+cur_request.wind+'}\n\n{thero|}温度\t\t\t\t\t\t\t\t\t\t\t\t\t{gauge|}风力\n\n\t\t\t\t\t\t{num2|'+cur_request.celsius+'}\t\t\t\t\t\t{wd|'+cur_request.wind_level+'}',
+          left: '82%',
+          top: '13.8%',
+          textStyle:{
+            fontSize:'24',
+            color:'#fff',
+            rich:{
+              time:{
+                fontSize:28,
+                color:'#fff',
+              },
+              drop:{
+                backgroundColor: {
+                  image: 'https://cdn-icons-png.flaticon.com/512/427/427112.png'
+                },
+                height: 30,
+                width: 30
+                },
+              wind:{
+                backgroundColor: {
+                  image: 'https://cdn-icons-png.flaticon.com/512/1506/1506761.png'
+                },
+                height: 30,
+                width: 30
+              },
+              num:{
+                fontSize:36,
+                color:"rgb(54,191,204)"
+              },
+              dir2:{
+                fontSize:32,
+                color:"rgb(131,217,106)"
+              },
+              thero:{
+                backgroundColor: {
+                  image: 'https://cdn-icons-png.flaticon.com/512/2622/2622386.png'
+                },
+                height: 30,
+                width: 30
+              },
+              gauge:{
+                backgroundColor: {
+                  image: 'https://cdn-icons-png.flaticon.com/512/1085/1085657.png'
+                },
+                height: 30,
+                width: 30
+              },
+              num2:{
+                fontSize:36,
+                color:"rgb(245,139,81)"
+              },
+              wd:{
+                fontSize:32,
+                color:"rgb(239,219,97)"
+              },
+            }
+          }
+        },
+          {
+            text: '{city|'+request.locs[g_cur_city]+'}\t\t\t\t\t\t\t\t{time|'+cur_request.time+'}',
+            left: '82.5%',
+            top: '6%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+              rich:{
+                city:{
+                  fontSize:48,
+                },
+                time:{
+                  fontSize:24,
+                }
+              }
+            }
+          },
+          {
+            text: '{city|'+request.locs[g_cur_city]+'} 7日天气预报',
+            left: '38%',
+            top: '63.2%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+              rich:{
+                city:{
+                  fontSize:24,
+                },
+              }
+            }
+          },
+          {
+            text: '{city|}风向',
+            left: '81%',
+            top: '63.2%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+              rich:{
+                city:{
+                  fontSize:24,
+                },
+              }
+            }
+          },
+          {
+            text: '40天气温变化趋势预测',
+            left: '3.2%',
+            top: '3.2%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+              }
+          },
+          {
+            text: '累计气温排名',
+            left: '3.2%',
+            top: '63.2%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+            }
+          },
+          {
+            text: '空气质量',
+            left: '20.2%',
+            top: '63.2%',
+            textStyle: {
+              color:'rgb(252,238,186)',
+            }
+          }
+        ],
+        geo3D: {
+          map: 'world',
+          type: 'earth',
+          shading: 'realistic',
+          silent: true,
+          environment: 'rgba(85,85,85,0.2)',
+          realisticMaterial: {
+            roughness: 0.8,
+            metalness: 0
+          },
+          postEffect: {
+            enable: true
+          },
+          groundPlane: {
+            show: false
+          },
+          light: {
+            main: {
+              intensity: 1,
+              alpha: 30
+            },
+            ambient: {
+              intensity: 0
+            }
+          },
+          viewControl: {
+            //center: [114.63,30.65],
+            distance: 70,
+            alpha: 89,
+            rotateSensitivity: 1,
+            center: [15,-20.0,0]
+          },
+          itemStyle: {
+            color: 'rgba(34,34,34,0.10)'
+          },
+          regionHeight: 0.5
+        },
+        geo: [
+          {
+            map: 'hubei',
+            zlevel:6,
+            layoutCenter:['63%','29%'],
+            layoutSize:640,
+            label: {
+              show: true,
+              color: '#2d559d'
+            },
+            data:request.locs,
+            // nameMap:{'十堰市':'十堰', '襄阳市':'襄阳', '神农架林区':'神农架', '随州市':'随州', '恩施土家族苗族自治州':'恩施', '宜昌市':'宜昌', '荆门市':'荆门', '荆州市':'荆州', '潜江市':'潜江', '天门市':'天门', '仙桃市':'仙桃', '孝感市':'孝感', '武汉市':'武汉', '黄冈市':'黄冈', '鄂州市':'鄂州', '咸宁市':'咸宁', '黄石市':'黄石'}
+            //revNameMap:{'十堰':'十堰市', '襄阳':'襄阳市', '神农架':'神农架林区', '随州':'随州市', '恩施':'恩施土家族苗族自治州', '宜昌':'宜昌市', '荆门':'荆门市', '荆州':'荆州市', '潜江':'潜江市', '天门':'天门市', '仙桃':'仙桃市', '孝感':'孝感市', '武汉':'武汉市', '黄冈':'黄冈市', '鄂州':'鄂州市', '咸宁':'咸宁市', '黄石':'黄石市'}
+          },
+          {
+          map: 'hubei',
+          zlevel:5,
+          layoutCenter:['63%','30%'],
+          layoutSize:640,
+          label: {
+            show: true,
+            color: '#3665bb'
+          },
+            itemStyle: {
+              color: '#165ea8', // 背景
+              borderWidth: '1', // 边框宽度
+              borderColor: '#115193', // 边框颜色
+            }
+          },
+          {
+            map: 'hubei',
+            top:'11%',
+            zlevel:4,
+            layoutCenter:['63%','31%'],
+            layoutSize:640,
+            itemStyle: {
+              color: '#115193', // 背景
+              borderWidth: '1', // 边框宽度
+              borderColor: '#104c8a', // 边框颜色
+            }
+          },
+          {
+            map: 'hubei',
+            top:'12%',
+            zlevel:3,
+            layoutCenter:['63%','32%'],
+            layoutSize:640,
+            itemStyle: {
+              color: '#104c8a', // 背景
+              borderWidth: '1', // 边框宽度
+              borderColor: '#0d4580', // 边框颜色
+            }
+          },
+          {
+            map: 'hubei',
+            top:'13%',
+            zlevel:2,
+            layoutCenter:['63%','33%'],
+            layoutSize:640,
+            itemStyle: {
+              color: '#06396e', // 背景
+              borderWidth: '1', // 边框宽度
+              borderColor: '#0c234d', // 边框颜色
+              shadowColor: '#fff',  // 外部阴影
+              shadowBlur:'10'
+            }
+          }
+        ],
+        angleAxis: {
+          type: 'category',
+          data: ['北','东北','东','东南','南','西南','西','西北'],
+          boundaryGap: false,
+          splitLine: {
+            show: true
+          },
+          axisLine: {
+            show: true,
+          },
+          axisLabel: {
+            fontSize:12,
+            textStyle:{
+              color:'#fff',
+            }
+          }
+        },
+        radiusAxis: {
+          type: 'category',
+          data: ['0','<3','3-4','4-5','>5'],
+          axisLine: {
+            show: true,
+            itemStyle: {
+              color: '#fff'
+            },
+            width:5,
+          },
+          splitLine: {
+            show: true
+          },
+          axisLabel: {
+            fontSize:12,
+            textStyle:{
+              color:'#fff',
+            }
+          }
+        },
+        polar:[
+          {
+            //:6,
+            radius:'30%',
+            center:['89.5%','80.5%'],
+            zlevel:5,
+            radiusAxisIndex:0,
+            angleAxisIndex:0,
+          }
+        ],
+        tooltip:[
+                {
+          trigger:'axis',
+          triggerOn:'mousemove',
+          axisPointer:{
+            type:'line'
+          },
+          confine: true,
+          enterable: true,
+          formatter: function (params, ticket, callback) {
+            var tipString = params[0].axisValue + "<br />";
+            var indexColor;
+            for (var i = 0, length = params.length; i < length; i++) {
+              indexColor = g_colors[i+1];
+              tipString += '<span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background:'+ indexColor +'"></span>';
+              tipString += params[i].seriesName + '：' + params[i].value + '<br />';
+            }
+            return tipString;
+          }
+        }],
+        grid: [
+          { //0
+            left: '45%',
+            right: '35%',
+            top: '15%',
+            bottom: '60%',
+            containLabel: true,
+          },
+          { //1
+            left: '3.5%',
+            right: '65%',
+            top: '9.8%',
+            bottom: '68.5%',
+            containLabel: true
+          },
+          { //2
+            left: '3.5%',
+            right: '65%',
+            top: '37.5%',
+            bottom: '40.8%',
+            containLabel: true,
+          },
+          { //3 background for chart
+            left: '3.5%',
+            right: '81.5%',
+            top: '68%',
+            bottom: '3.5%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          { //4 background for chart
+            left: '21.5%',
+            right: '64.5%',
+            top: '68%',
+            bottom: '3.5%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          { //5 7days
+            left: '39%',
+            right: '20.8%',
+            top: '70.5%',
+            bottom: '6.5%',
+            show:true,
+            backgroundColor: 'rgba(46,46,234,0.41)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          // { //6 wind direction
+          //   left: '81%',
+          //   right: '2%',
+          //   top: '62%',
+          //   bottom: '1.5%',
+          //   show:true,
+          //   backgroundColor: 'rgba(52,52,208,0.6)',
+          //   borderColor: 'rgba(32,32,35,0.6)',
+          //   itemStyle:{
+          //     borderRadius:8,
+          //   }
+          // },
+          { //6 gauge
+            left: '82%',
+            right: '3%',
+            top: '39%',
+            bottom: '40.8%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            borderRadius:8,
+          },
+          { //background 1
+            left: '3%',
+            right: '64%',
+            top: '2.5%',
+            bottom: '40%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          { //background 2
+            left: '3%',
+            right: '81%',
+            top: '62%',
+            bottom: '1.5%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          { //background 3
+            left: '20%',
+            right: '64%',
+            top: '62%',
+            bottom: '1.5%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          { //background 4
+            left: '37%',
+            right: '20%',
+            top: '62%',
+            bottom: '1.5%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            itemStyle:{
+              borderRadius:8,
+            }
+          },
+          // { //background 5
+          //   left: '81%',
+          //   right: '2%',
+          //   top: '62%',
+          //   bottom: '1.5%',
+          //   show:true,
+          //   backgroundColor: 'rgba(32,32,35,0.6)',
+          //   borderColor: 'rgba(32,32,35,0.6)',
+          //   itemStyle:{
+          //     borderRadius:8,
+          //   }
+          // },
+          { //background 6
+            left: '81%',
+            right: '2%',
+            top: '2.5%',
+            bottom: '40%',
+            show:true,
+            backgroundColor: 'rgba(32,32,35,0.6)',
+            borderColor: 'rgba(32,32,35,0.6)',
+            borderRadius:8,
+          },
+        ],
+        dataZoom: [{
+          gridIndex:1,
+          orient: 'horizontal',      // 布局方式，默认为水平布局，可选为：
+                                     // 'horizontal' ¦ 'vertical'
+          y: "32%",            // 垂直安放位置，默认为根据grid参数适配，可选为：
+          width: "28%",        // 指定宽度，横向布局时默认为根据grid参数适配
+          // height: {number},       // 指定高度，纵向布局时默认为根据grid参数适配
+          xAxisIndex: [0,1],
+          backgroundColor: 'rgba(0,0,0,0)',       // 背景颜色
+          dataBackgroundColor: '#eee',            // 数据背景颜色
+          fillerColor: 'rgba(144,197,237,0.2)',   // 填充颜色
+          handleColor: 'rgba(70,130,180,0.8)',    // 手柄颜色
+          textStyle:{
+            color: '#eee'
+          }
+        },{
+          gridIndex: 1,
+          type: 'inside',
+          xAxisIndex: [0,1],
+          realtime:true
+        }],
+        legend: {
+          orient: 'vertical',
+          zlevel:6,
+          left: '37%',
+          right: '1%',
+          top: '3%',
+          bottom: '2%',
+          textStyle:{
+            color:'#eee',
+            fontSize: 18,
+          },
+          data:request.locs,
+        },
+        xAxis: [
+          {
+            gridIndex:1,
+            type: 'category',
+            data: [],
+            axisLabel: {
+              formatter: '{value} 日'
+            },
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            axisPointer: {
+              type: 'shadow'
+            },
+              color: '#fff'
+          },
+          {
+            gridIndex:2,
+            type: 'category',
+            axisLabel: {
+              formatter: '{value} 日'
+            },
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            axisPointer: {
+              type: 'shadow'
+            },
+            color: '#fff'
+          },
+          {
+            gridIndex:3,
+            type: 'value',
+            //name: '平均气温℃',
+            axisLabel: {
+              formatter: '{value}'
+            },
+            zlevel:5,
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            inverse:true,
+            scale:true,
+            animationDuration: 100,
+            animationDurationUpdate: 100
+          },
+          {
+            gridIndex:4,
+            type: 'value',
+            axisLabel: {
+              formatter: '{value}',
+            },
+            zlevel:5,
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            //inverse:true,
+            min:(value)=>{
+              return value.min - 2;
+            },
+            max:(value)=>{
+              return value.max + 2;
+            },
+            animationDuration: 100,
+            animationDurationUpdate: 100
+          },
+          {
+            gridIndex:5,
+            type: 'category',
+            zlevel:5,
+            axisLine: {
+              show: false,    // 是否显示坐标轴轴线
+            },
+            axisTick: {
+              show: false,
+            },
+            //inverse:true,
+            animationDuration: 100,
+            animationDurationUpdate: 100,
+            axisLabel: {
+              show: true,
+              color: '#72ccff',
+              fontSize:15,
+              formatter:function(value, index){
+                var revMap = {'小雨':0,'中雨':1,'大雨':2,'阴':3,'晴':4,'多云':5};
+                return '{'+revMap[request.data[g_cur_city].data_7d.WEATHER[index]]+'|}';
+              },
+              rich: {
+                0: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/小雨.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+                1: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/中雨.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+                2: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/大雨.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+                3: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/阴.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+                4: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/晴.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+                5: {
+                  backgroundColor: {
+                    image: 'https://d.scggqx.com/forecast/img/多云.png'
+                  },
+                  height: 30,
+                  width: 30
+                },
+              }
+            },
+          },
+          {
+            gridIndex:5,
+            type: 'category',
+            position: 'top',
+            data: [],
+            zlevel:5,
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            axisLabel:{
+              color:'#fff',
+              fontSize:15,
+            },
+            //inverse:true,
+            animationDuration: 100,
+            animationDurationUpdate: 100,
+          },
+        ],
+        yAxis: [{ //0
+          gridIndex:1,
+          type: 'value',
+          name: '最高气温',
+          axisLabel: {
+            formatter: '{value} ℃'
+          },
+          zlevel:5,
+          axisLine: {
+            show: true,    // 是否显示坐标轴轴线
+            lineStyle: {
+              color: '#fff',    // 坐标轴线线的颜色
+              type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+            },
+          },
+          scale:true,
+          animationDuration: 200,
+          animationDurationUpdate: 200
+        },
+        {
+          gridIndex:2,
+          type: 'value',
+            name: '最低气温',
+          axisLabel: {
+            formatter: '{value} ℃'
+          },
+            zlevel:5,
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+          scale:true,
+          animationDuration: 200,
+          animationDurationUpdate: 200
+        },
+          {
+            gridIndex:3,
+            type: 'category',
+            data: new Array(request.locs.length).fill(''),
+            axisLabel: {
+              formatter: '{value}',
+              fontSize:18
+            },
+            axisLine: {
+              show: true,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            axisPointer: {
+              type: 'shadow'
+            },
+            inverse: true,
+            color: '#fff',
+            animationDuration: 200,
+            animationDurationUpdate: 200
+          },
+          {
+            gridIndex:4,
+            type: 'category',
+            data: new Array(request.locs.length).fill(''),
+            axisLabel: {
+              formatter: '{value}',
+              fontSize:18
+            },
+            axisLine: {
+              show: false,    // 是否显示坐标轴轴线
+              lineStyle: {
+                color: '#fff',    // 坐标轴线线的颜色
+                type: 'solid',     // 坐标轴线线的类型（'solid'，实线类型；'dashed'，虚线类型；'dotted',点状类型）
+              },
+            },
+            axisPointer: {
+              type: 'shadow'
+            },
+            inverse: true,
+            color: '#fff',
+            animationDuration: 200,
+            animationDurationUpdate: 200
+          },
+          {
+            gridIndex:5,
+            type: 'value',
+            //data: request.locs,
+            axisLabel: {
+              formatter: '{value}',
+              fontSize:18
+            },
+            axisLine: {
+              show: false,    // 是否显示坐标轴轴线
+            },
+            axisTick: {
+              show: false,
+            },
+            scale: true,
+            splitLine: {
+              show: false
+            },
+            color: '#fff',
+            animationDuration: 200,
+            animationDurationUpdate: 200
+          },
+        ],
+        visualMap: [{
+          min:-5,
+          max:50,
+          text: ['High', 'Low'],
+          realtime: true,
+          calculable: true,
+          hoverLink: true,
+          seriesIndex:[0],
+          inRange: {
+            color: ['rgb(154,227,238)','rgb(154,238,203)','rgb(243,239,146)','rgb(225,106,80)','rgb(210,73,43)'],
+          },
+          textStyle: {
+            color:'#eee',
+            fontSize:12
+          }
+        },
+          {
+            min:0,
+            max:500,
+            seriesIndex:[3],
+            hoverLink: true,
+            show:false,
+            inRange: {
+              color: ['#7CFFB2',
+                '#58D9F9',
+                '#FDDD60',
+                '#e18528',
+                '#FF6E76'],
+            },
+          }
+          ],
+        series:[
+          {
+          gridIndex:0,
+          name: '湖北省',
+          type: 'map',
+          coordinateSystem: 'geo', geoIndex:0,
+          map: 'hubei',
+          legendHoverLink: true,
+          },
+          { //series 1
+            xAxisIndex: 2,
+            yAxisIndex: 2,
+            realtimeSort:true, //开启动态排序
+            type: 'bar',
+            name: '平均温度',
+            data: new Array(request.locs.length).fill(0),
+            legendHoverLink:true,
+            seriesLayoutBy: 'column',
+            itemStyle:{
+              color: function(params) {
+                return g_colors[params.dataIndex+1];
+              }
+            },
+            label: {
+              show: true,
+              color: '#eee',
+              formatter:function (params) {
+                return params.name+' '+params.value.toFixed(2);
+              }
+            }
+          },
+          { //series 2
+            xAxisIndex: 3,
+            yAxisIndex: 3,
+            //realtimeSort:true,
+            type: 'bar',
+            name: '空气质量',
+            data: air_level_array,
+            legendHoverLink:true,
+            itemStyle:{
+              color: function(params) {
+                return g_colors[params.dataIndex+1];
+              }
+            },
+            label: {
+              show: true,
+              color: '#eee',
+              formatter:function (params) {
+                return params.name+' '+params.value;
+              }
+            }
+          },
+          { //series 3
+            coordinateSystem: 'geo',
+            geoIndex: 0,
+            // xAxisIndex: 3,
+            // yAxisIndex: 3,
+            type: 'effectScatter',
+            name: '空气质量',
+            data: convertData(air_levels),
+            legendHoverLink: true,
+            showEffectOn: 'render',
+            rippleEffect: {
+              brushType: 'stroke'
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: '#333'
+            },
+            emphasis: {
+              scale: true
+            },
+            zlevel:6,
+            symbol:function(params){
+              if (params[3] == g_cur_city)
+                return 'triangle';
+              return 'circle'
+            },
+            symbolSize:function (params){
+              x = params[2];
+              return Math.sqrt(x)*Math.log2(x/2);
+            },
+            symbolOffset:[12,-16],
+            label: {
+              show: true,
+              color: 'rgba(32,32,35,0.6)',
+              fontSize:15,
+              formatter:function (params) {
+                return params.value[2];
+              }
+            },
+            //nameMap:{'十堰市':'十堰', '襄阳市':'襄阳', '神农架林区':'神农架', '随州市':'随州', '恩施土家族苗族自治州':'恩施', '宜昌市':'宜昌', '荆门市':'荆门', '荆州市':'荆州', '潜江市':'潜江', '天门市':'天门', '仙桃市':'仙桃', '孝感市':'孝感', '武汉市':'武汉', '黄冈市':'黄冈', '鄂州市':'鄂州', '咸宁市':'咸宁', '黄石市':'黄石'}
+          },
+          { //series 4
+            coordinateSystem: 'polar',
+            polarIndex: 0,
+            // xAxisIndex: 3,
+            // yAxisIndex: 3,
+            type: 'effectScatter',
+            name: '风向',
+            data: [{name:'<3',value:'北'}],
+            legendHoverLink: true,
+            showEffectOn: 'render',
+            rippleEffect: {
+              brushType: 'stroke'
+            },
+            symbol:'arrow',
+            itemStyle: {
+              color:'rgba(255,255,255,1)',
+              shadowBlur: 10,
+              shadowColor: '#333'
+            },
+            emphasis: {
+              scale: true
+            },
+            zlevel:6,
+            symbolSize:16,
+            symbolRotate:function(params){
+              var dir = {'北':0,'东北':315,'东':270,'东南':225,'南':180,'西南':135,'西':90,'西北':45}
+              return dir[params[1]];
+            },
+            label: {
+              show: true,
+              color: '#72ccff',
+              fontSize:15,
+              formatter:function (params) {
+                return params.dataIndex+1;
+              }
+            },
+            animationDurationUpdate:500,
+            animationEasingUpdate:'quinticInOut'
+          },
+          { //series 5
+            xAxisIndex: 4,
+            yAxisIndex: 4,
+            type: 'line',
+            name: '温度',
+            data: request.data[g_cur_city].data_7d.CELSIUS,
+            legendHoverLink: true,
+            showEffectOn: 'render',
+            stack:true,
+            rippleEffect: {
+              brushType: 'stroke'
+            },
+            itemStyle: {
+              color:'rgba(255,255,255,1)',
+              shadowBlur: 10,
+              shadowColor: '#333'
+            },
+            emphasis: {
+              scale: true
+            },
+            zlevel:6,
+            symbol:'circle',
+            symbolSize:22,
+            labelLayout: {
+              moveOverlap: 'shiftY'
+            },
+            label: {
+              show: true,
+              color: '#ffb972',
+              fontSize:15,
+              position:'bottom'
+            },
+            animationDuration:200,
+            animationDurationUpdate:500,
+            animationEasingUpdate:'quarticInOut'
+          },
+          { //series 6
+            xAxisIndex: 5,
+            yAxisIndex: 4,
+            type: 'bar',
+            name: '蓝天指数',
+            data: request.data[g_cur_city].data_7d.BLUE,
+            legendHoverLink: true,
+            showEffectOn: 'render',
+            stack:true,
+            rippleEffect: {
+              brushType: 'stroke'
+            },
+            itemStyle: {
+              color:'rgba(255,255,255,1)',
+              shadowBlur: 10,
+              shadowColor: '#333'
+            },
+            emphasis: {
+              scale: true
+            },
+            zlevel:6,
+            symbolSize:25,
+            labelLayout: {
+              moveOverlap: 'shiftY'
+            },
+            label: {
+              show: true,
+              color: '#72ccff',
+              fontSize:15,
+              position:'top'
+            },
+            animationDuration:200,
+            animationDurationUpdate:500,
+            animationEasingUpdate:'quarticInOut'
+          },
+          { //series7
+            type: 'gauge',
+            startAngle: 180,
+            endAngle: 0,
+            min: 0,
+            max: 500,
+            center:['89.5%','57%'],
+            radius:'30.5%',
+            zlevel:7,
+            splitNumber: 8,
+            axisLine: {
+              lineStyle: {
+                width: 6,
+                color: [
+                  [0.2, '#7CFFB2'],
+                  [0.4, '#58D9F9'],
+                  [0.6, '#FDDD60'],
+                  [0.8, '#e18528'],
+                  [1.0, '#FF6E76'],
+                ]
+              }
+            },
+            pointer: {
+              icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+              length: '12%',
+              width: 20,
+              offsetCenter: [0, '-60%'],
+              itemStyle: {
+                color: 'auto'
+              }
+            },
+            axisTick: {
+              length: 12,
+              lineStyle: {
+                color: 'auto',
+                width: 2
+              }
+            },
+            splitLine: {
+              length: 20,
+              lineStyle: {
+                color: 'auto',
+                width: 5
+              }
+            },
+            axisLabel: {
+              color: '#fff',
+              fontSize: 20,
+              distance: -50,
+              formatter: function (value) {
+                if (value === 125) {
+                  return '125';
+                } else if (value === 250) {
+                  return '250';
+                } else if (value === 375) {
+                  return '375';
+                }else if (value === 500) {
+                  return '500';
+                }
+                return '';
+              }
+            },
+            title: {
+              offsetCenter: [0, '-30%'],
+              fontSize: 30,
+              fontColor: '#fff',
+            },
+            detail: {
+              fontSize: 50,
+              offsetCenter: [0, '0%'],
+              valueAnimation: true,
+              formatter: function (value) {
+                if(value<=100)
+                  return Math.round(value) + ' 优';
+                if(value<=200)
+                  return Math.round(value) + ' 良';
+                if(value<=300)
+                  return Math.round(value) + ' 较差';
+                if(value<=400)
+                  return Math.round(value) + ' 很差';
+                return ' 糟糕';
+              },
+              color: 'auto'
+            },
+            data: [
+              {
+                value: cur_request.air_level,
+                name: '实时空气质量'
+              }
+            ]
+          }
+        ]
+      };
+      var offset = option.series.length;
+      var idx = [0,5];
+      const len = 2;
+      for (var i = 0; i<request.locs.length;++i){
+        idx.push(len*i+offset);
+        idx.push(len*i+1+offset);
+        option.series.push({
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          name: request.locs[i],
+          type: 'line',
+          symbol:'circle',
+          symbolSize: 10,
+          data: [],
+          itemStyle:{
+            color:g_colors[i+1],
+          },
+          lineStyle:{
+              color:g_colors[i+1],
+          },
+
+        });
+        option.series.push({
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          name: request.locs[i],
+          type: 'line',
+          symbol:'circle',
+          symbolSize: 7,
+          data: [],
+          itemStyle:{
+            color:g_colors[i+1],
+          },
+          lineStyle:{
+            color:g_colors[i+1],
+          }
+        });
+      }
+      option.visualMap[0].seriesIndex = idx;
+      myChart.setOption(option);
+      function update() {
+        if((g_timer & 3) == 0)
+        {
+          var OptData = option.series;
+          var dict = [],dict2=[];
+          var temp = [];
+          for (var i = 0; i<request.locs.length;++i) {
+            var prev1 = OptData[len*i + offset].data;
+            var prev2 = OptData[len*i+1 + offset].data;
+            var c = (request.data[i].data_40d.CELSIUS2[cnt]+request.data[i].data_40d.CELSIUS1[cnt])/2;
+            prev1.push(request.data[i].data_40d.CELSIUS2[cnt]);
+            prev2.push(request.data[i].data_40d.CELSIUS1[cnt]);
+            OptData[len*i + offset].data = prev1;
+            OptData[len*i+1 + offset].data = prev2;
+            dict.push({name:revNameMap[request.locs[i]],value:c});
+            dict2.push({name:request.locs[i],value:c});
+            var tmp = OptData[1].data[i].value;
+            tmp = (tmp*(cnt)+c)/(cnt+1);
+            temp.push(tmp);
+          }
+          OptData[0].data = dict;
+          OptData[1].data = dict2;//更新四十天天气数据
+          option.series=OptData;
+          ++cnt;
+          if(cnt>=request.data[0].data_40d.TIME.length)
+          {
+            cnt = 0;
+            for (var i = 0; i<request.locs.length;++i) {
+              OptData[len*i + offset].data = [];
+              OptData[len*i+1 + offset].data = [];
+            }
+            OptData[1].data = new Array(request.locs.length).fill(0);
+          }
+          option.xAxis[0].data = request.data[0].data_40d.TIME.slice(0,cnt);
+          option.xAxis[1].data = request.data[0].data_40d.TIME.slice(0,cnt);
+        }
+        var idxCounter = g_timer % request.data[g_cur_city].data_7d.TIME.length;
+        option.xAxis[4].data=request.data[g_cur_city].data_7d.WEATHER;
+        option.xAxis[5].data=request.data[g_cur_city].data_7d.TIME;
+        option.title[3].text='{city|'+request.data[g_cur_city].data_7d.TIME[idxCounter]+'}风向';
+        var wind = request.data[g_cur_city].data_7d.WIND[idxCounter].split('转');
+        var wind_level = request.data[g_cur_city].data_7d.WIND_LEVEL[idxCounter].split('转');
+        var wind_data = [];
+        //option.radiusAxis.data=wind_level;
+        for (var i = 0; i<wind.length;++i){
+          //
+          wind_data.push([wind_level[i].replace('级',''),wind[i].replace('风','')]);
+        }
+        option.series[4].data=wind_data; //更新焦点城市七天天气数据
+        myChart.dispatchAction({
+          type: 'showTip',
+          seriesIndex: 5,
+          dataIndex: idxCounter,
+        });
+        ++g_timer;
+        myChart.setOption(option);
+      }
+      //ECharts
+      myChart.on('selectchanged', function (params) {
+        city = request.locs[params.selected[0].dataIndex];  //读取点击地图得到的城市的id
+        input_ele.value = city;
+        form_ele.submit();
+      });
+      setInterval(function() {
+          update();}, 1000);
+      });
+    </script>
+  </center>
+</body>
+
+</html>

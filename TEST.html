@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>vue-demo</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="counter"></div>
+    <script>
+        const MyText = {
+            data() {
+                return {
+                    text: '子组件'
+                };
+            },
+            template: '<div>{{text}}</div>',
+            mounted() {
+                console.log('子组件挂载');
+            },
+            unmounted() {
+                console.log('子组件销毁');
+            }
+        };
+
+        const MyComponent = {
+            template: `
+                <div>
+                    父组件
+                    <my-text
+                        v-if="isShowChildComponent"
+                    ></my-text>
+                    <button @click="onButtonClick">{{isShowChildComponent ? '销毁子组件' : '展示子组件'}}</button>
+                </div>
+            `,
+            data() {
+                return {
+                    isShowChildComponent: false
+                };
+            },
+            methods: {
+                onButtonClick() {
+                    this.isShowChildComponent = !this.isShowChildComponent;
+                }
+            }
+        }
+
+        const app = Vue.createApp(MyComponent);
+        app.component('my-text', MyText);
+        app.mount('#counter');
+    </script>
+</body>
+</html>
